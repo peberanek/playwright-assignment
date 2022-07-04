@@ -67,5 +67,5 @@ sudo apt install -y python3-pip python3-venv
 make venv
 source venv/bin/activate
 playwright install
-make tests
+pytest  # this will run all available tests
 ```

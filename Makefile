@@ -22,7 +22,3 @@ venv: VENV_DIR = venv
 venv: ## create Python virtual environment
 	python3 -m venv --clear --upgrade-deps $(VENV_DIR)
 	. $(VENV_DIR)/bin/activate && python3 -m pip install -r requirements.txt
-
-.PHONY: tests
-tests: ## run all tests
-	pytest $(PY_FILES)
