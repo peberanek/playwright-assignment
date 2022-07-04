@@ -68,12 +68,10 @@ def test_basic_search(page, context):
     context.add_cookies(cookies)
 
     logging.info("Opening '%s'", basel_url)
-    page.goto(basel_url)
+    # Test will fail in headless mode if not set `wait_until='networkidle'`.
+    page.goto(basel_url, wait_until='networkidle')
 
     logging.info("Searching for '%s'", term)
-    # FIXME: Headless mode needs some delay here otherwise next steps
-    # fail because of timeout. Term is not filled?
-    page.wait_for_timeout(1000)
     page.locator(search_field).click()
     page.locator(search_field).fill(term)
     page.locator("[aria-label=\"Vyhledat\"]").click()
