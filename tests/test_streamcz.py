@@ -21,13 +21,12 @@ from datetime import datetime, timedelta
 #
 
 # TODO: what about to use some autouse fixture?
-future_timestamp = (
-    datetime.now() + timedelta(days=30)
-).timestamp()  # today + 30 days in secs
 common_cookie_vals = {
     "domain": ".stream.cz",
     "path": "/",
-    "expires": future_timestamp,
+    "expires": (
+        datetime.now() + timedelta(days=30)
+    ).timestamp(),  # today + 30 days in secs
     "secure": True,
     "sameSite": "None",
     "httpOnly": False,
@@ -72,13 +71,16 @@ def test_basic_search(page, context):
     page.goto(basel_url)
 
     logging.info("Searching for '%s'", term)
+    # FIXME: Headless mode needs some delay here otherwise next steps
+    # fail because of timeout. Term is not filled?
+    page.wait_for_timeout(1000)
     page.locator(search_field).click()
     page.locator(search_field).fill(term)
-    # TODO: user may click the magnifier icon as well.
-    page.locator(search_field).press("Enter")
+    page.locator("[aria-label=\"Vyhledat\"]").click()
+    # TODO: user may press "Enter" as well.
+    # page.locator(search_field).press("Enter")
 
     logging.info("Waiting for redirection")
-    # XXX: in headless mode this fails with timeout
     page.wait_for_url(f"{basel_url}hledani?dotaz={term}")
 
     # FIXME: verify results were found
