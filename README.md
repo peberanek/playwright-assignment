@@ -52,3 +52,20 @@ const CMP_COOKIES: Cookie[] = [
 	},
 ];
 ```
+
+## Implementace
+
+Host OS spec:
+* Ubuntu 22.04
+* Python 3.10.4 + pytest 7.1.2
+* playwright 1.23.0
+
+### Instalace a spusteni testu
+
+```shell
+sudo apt install -y python3-pip python3-venv
+make venv
+source venv/bin/activate
+playwright install
+make tests
+```
