@@ -22,11 +22,10 @@ Notes:
 
 import logging
 from datetime import datetime, timedelta
+from typing import Any, Dict
 
 import pytest
-from playwright.sync_api import Page
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import expect
+from playwright.sync_api import Page, expect
 
 
 @pytest.fixture(autouse=True)
@@ -106,24 +105,36 @@ test_data = [
 ]
 
 
+def search_term(
+    page: Page, url: str, term: str, browser_context_args: Dict[Any, Any]
+) -> None:
+    """Search a term on stream.cz.
+
+    page: playwright.sync_api.Page
+    url: str - URL of a page where to start the search
+    term: str - term to search for
+    browser_context_args: Dict[Any, Any] - pytest-playwright fixture (for details see
+        https://playwright.dev/python/docs/test-runners#fixtures)
+    """
+    logging.info("Opening '%s'", url)
+    page.goto(url, wait_until="networkidle")
+
+    logging.info("Searching for '%s'", term)
+    if browser_context_args.get("is_mobile", False):
+        page.locator(sel_mob_show_search_button).click()
+    page.locator(sel_search_field).click()
+    page.locator(sel_search_field).fill(term)
+    page.locator(sel_search_button).click()
+
+    logging.info("Waiting for redirection")
+    expect(page).to_have_url(f"{base_url}/hledani?dotaz={term}")
+
+
 @pytest.mark.parametrize("test_data", test_data)
 def test_basic_search(page, test_data, browser_context_args):
     """Test basic search on the Stream.cz main page."""
 
-    logging.info("Opening '%s'", base_url)
-    page.goto(base_url, wait_until="networkidle")
-
-    logging.info("Searching for '%s'", test_data["term"])
-    if browser_context_args.get("is_mobile", False):
-        page.locator(sel_mob_show_search_button).click()
-    page.locator(sel_search_field).click()
-    page.locator(sel_search_field).fill(test_data["term"])
-    page.locator(sel_search_button).click()
-    # TODO: user may press "Enter" as well.
-    # page.locator(search_field).press("Enter")
-
-    logging.info("Waiting for redirection")
-    expect(page).to_have_url(f"{base_url}/hledani?dotaz={test_data['term']}")
+    search_term(page, base_url, test_data["term"], browser_context_args)
 
     logging.info("Verifying search results")
     for section in test_data["search_result_sections"]:
@@ -140,18 +151,7 @@ def test_search_for_nonexistent_term(page, browser_context_args):
     """
     term = "foobarterm"
 
-    logging.info("Opening '%s'", base_url)
-    page.goto(base_url, wait_until="networkidle")
-
-    logging.info("Searching for '%s'", term)
-    if browser_context_args.get("is_mobile", False):
-        page.locator(sel_mob_show_search_button).click()
-    page.locator(sel_search_field).click()
-    page.locator(sel_search_field).fill(term)
-    page.locator(sel_search_button).click()
-
-    logging.info("Waiting for redirection")
-    expect(page).to_have_url(f"{base_url}/hledani?dotaz={term}")
+    search_term(page, base_url, term, browser_context_args)
 
     logging.info("Verifying no results were found")
     info_msg = page.locator("text=Bohužel jsme nic nenašli")
@@ -180,18 +180,7 @@ def test_search_for_videos_from_random_page(page, test_data, browser_context_arg
     """
     url = base_url + "/moje/odebirane"
 
-    logging.info("Opening '%s'", url)
-    page.goto(url, wait_until="networkidle")
-
-    logging.info("Searching for '%s'", test_data["term"])
-    if browser_context_args.get("is_mobile", False):
-        page.locator(sel_mob_show_search_button).click()
-    page.locator(sel_search_field).click()
-    page.locator(sel_search_field).fill(test_data["term"])
-    page.locator(sel_search_button).click()
-
-    logging.info("Waiting for redirection")
-    expect(page).to_have_url(f"{base_url}/hledani?dotaz={test_data['term']}")
+    search_term(page, url, test_data["term"], browser_context_args)
 
     logging.info("Verifying search results (videos)")
     for section in test_data["search_result_sections"]:
