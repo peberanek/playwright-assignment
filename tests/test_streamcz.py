@@ -3,6 +3,8 @@
 Tasks:
     * Cover at least the test cases listed in README.md
     * What other tests would you implement?
+        * Defferend terms then "Kazma"
+            * Searching a Czech term (e.g. 'Štastné pondělí') without diacritics.
 
 Notes:
     * How to achieve the widest coverage with minimal effort?
@@ -63,60 +65,72 @@ def mod_context(context):
     return context
 
 
-
 #
 # test cases
 #
 
+# FIXME: add this module marker
+# pytestmark = pytest.mark.flaky(reruns=1)
 
 base_url = "https://www.stream.cz"
-search_field = '[placeholder="Zadejte\\, co chcete hledat"]'
-search_button = '[aria-label="Vyhledat"]'
-search_results = (
-    {"name": "Nejlepší výsledek", "content_box": "[class=search-tag-channel]"},
-    {"name": "Pořady", "content_box": "[class=squircle-carousel__list]"},
-    {"name": "VideaFiltry", "content_box": "[class=search-episodes__list]"},
-)
+
+# selectors
+sel_search_field = '[placeholder="Zadejte\\, co chcete hledat"]'
+sel_search_button = '[aria-label="Vyhledat"]'
+sel_search_top_tag = "[class=search-top-tag__tag]"
+sel_vcard = "[class=vcard]"
+sel_squircle_carousel_list = "[class=squircle-carousel__list]"
+sel_search_episodes_list = "[class=search-episodes__list]"
+
+test_data = [
+    {
+        "term": "Kazma",
+        "search_result_sections": [
+            {"name": "Nejlepší výsledek", "content": sel_search_top_tag},
+            {"name": "Pořady", "content": sel_squircle_carousel_list},
+            {"name": "VideaFiltry", "content": sel_search_episodes_list},
+        ],
+    },
+    {
+        "term": "Seznam",
+        "search_result_sections": [
+            {"name": "Nejlepší výsledek", "content": sel_vcard},
+            {"name": "Pořady", "content": sel_squircle_carousel_list},
+            {"name": "VideaFiltry", "content": sel_search_episodes_list},
+        ],
+    },
+]
 
 
-def test_basic_search(page):
-    """Test basic search from the Stream.cz main page.
-
-    Test search field works.
-    Test user is redirected to the page with search results.
-    Test results were found and contain:
-        * "Nejlepsi vysledek"
-        * "Porady"
-        * "Videa"
-    Test results above are non-empty.
-    """
-    term = "Kazma"
+@pytest.mark.parametrize("test_data", test_data)
+def test_basic_search(page, test_data):
+    """Test basic search on the Stream.cz main page."""
 
     logging.info("Opening '%s'", base_url)
     page.goto(base_url, wait_until="networkidle")
 
-    logging.info("Searching for '%s'", term)
-    page.locator(search_field).click()
-    page.locator(search_field).fill(term)
-    page.locator(search_button).click()
+    logging.info("Searching for '%s'", test_data["term"])
+    page.locator(sel_search_field).click()
+    page.locator(sel_search_field).fill(test_data["term"])
+    page.locator(sel_search_button).click()
     # TODO: user may press "Enter" as well.
     # page.locator(search_field).press("Enter")
 
     logging.info("Waiting for redirection")
-    expect(page).to_have_url(f"{base_url}/hledani?dotaz={term}")
+    expect(page).to_have_url(f"{base_url}/hledani?dotaz={test_data['term']}")
 
     logging.info("Verifying search results")
-    for result in search_results:
-        logging.info("Verifying '%s'", result["name"])
-        expect(page.locator(f"text={result['name']}")).to_be_visible()
-        expect(page.locator(result["content_box"])).to_be_visible()
-        expect(page.locator(result["content_box"])).not_to_be_empty()
+    for section in test_data["search_result_sections"]:
+        logging.info("Verifying '%s'", section["name"])
+        expect(page.locator(f"text={section['name']}")).to_be_visible()
+        expect(page.locator(section["content"])).to_be_visible()
+        expect(page.locator(section["content"])).not_to_be_empty()
 
 
 def test_search_for_nonexistent_term(page):
     """Test searching for a non-existent term returns no results.
 
-    Verify user is presented with an information that no results were found.
+    Verify user is presented with an info that no results were found.
     """
     term = "foobarterm"
 
@@ -124,81 +138,74 @@ def test_search_for_nonexistent_term(page):
     page.goto(base_url, wait_until="networkidle")
 
     logging.info("Searching for '%s'", term)
-    page.locator(search_field).click()
-    page.locator(search_field).fill(term)
-    page.locator(search_button).click()
+    page.locator(sel_search_field).click()
+    page.locator(sel_search_field).fill(term)
+    page.locator(sel_search_button).click()
 
     logging.info("Waiting for redirection")
     expect(page).to_have_url(f"{base_url}/hledani?dotaz={term}")
 
     logging.info("Verifying no results were found")
     info_msg = page.locator("text=Bohužel jsme nic nenašli")
-    content = page.locator(".page-layout-content", has=info_msg)
     expect(info_msg).to_be_visible()
-    expect(content).to_have_count(1)
-
-    for result in search_results:
-        logging.info("Verifying '%s' is not shown", result["name"])
-        expect(page.locator(f"text={result['name']}")).not_to_be_visible()
+    expect(page.locator(".page-layout-content", has=info_msg)).to_have_count(1)
 
 
 def test_empty_search_page(page):
-    """Test that default search page ('/hledani') shows no results."""
-    default_search_page_url = base_url + "/hledani"
+    """Test that the search page ('/hledani') shows no results."""
+    search_page_url = base_url + "/hledani"
 
-    logging.info("Opening '%s'", default_search_page_url)
-    page.goto(default_search_page_url, wait_until="networkidle")
+    logging.info("Opening '%s'", search_page_url)
+    page.goto(search_page_url, wait_until="networkidle")
 
     logging.info("Verifying no results are shown")
     info_msg = page.locator("text=Zadejte, co chcete hledat")
-    content = page.locator(".page-layout-content", has=info_msg)
     expect(info_msg).to_be_visible()
-    expect(content).to_have_count(1)
-
-    for result in search_results:
-        logging.info("Verifying '%s' is not shown", result["name"])
-        expect(page.locator(f"text={result['name']}")).not_to_be_visible()
+    expect(page.locator(".page-layout-content", has=info_msg)).to_have_count(1)
 
 
-def test_search_for_videos_from_random_page(page):
-    """Test searching from a random page, verify related videos are shown.
+@pytest.mark.parametrize("test_data", test_data)
+def test_search_for_videos_from_random_page(page, test_data):
+    """Test searching videos any page.
 
     Verify the button "Načíst další videa" loads more videos.
     """
-    term = "Kazma"
     url = base_url + "/moje/odebirane"
 
     logging.info("Opening '%s'", url)
     page.goto(url, wait_until="networkidle")
 
-    logging.info("Searching for '%s'", term)
-    page.locator(search_field).click()
-    page.locator(search_field).fill(term)
-    page.locator(search_button).click()
+    logging.info("Searching for '%s'", test_data["term"])
+    page.locator(sel_search_field).click()
+    page.locator(sel_search_field).fill(test_data["term"])
+    page.locator(sel_search_button).click()
 
     logging.info("Waiting for redirection")
-    expect(page).to_have_url(f"{base_url}/hledani?dotaz={term}")
+    expect(page).to_have_url(f"{base_url}/hledani?dotaz={test_data['term']}")
 
-    logging.info("Verifying search for videos")
-    for result in search_results:
-        if result["name"] == "VideaFiltry":
-            video_section = result
+    logging.info("Verifying search results (videos)")
+    for section in test_data["search_result_sections"]:
+        if section["name"] == "VideaFiltry":
+            videos_section = section
             break
-    expect(page.locator(f"text={video_section['name']}")).to_be_visible()
-    expect(page.locator(video_section["content_box"])).to_be_visible()
-    expect(page.locator(video_section["content_box"])).not_to_be_empty()
+    expect(page.locator(f"text={videos_section['name']}")).to_be_visible()
+    expect(page.locator(videos_section["content"])).to_be_visible()
+    expect(page.locator(videos_section["content"])).not_to_be_empty()
 
-    num_videos: int = page.locator("[class=search-episodes__item]").count()
+    sel_search_episodes_item = "[class=search-episodes__item]"
+    num_videos: int = page.locator(sel_search_episodes_item).count()
     logging.debug("Videos found: %s", num_videos)
-    # FIXME: verify videos are visible
-    # num_vids = page.locator("li.search-episodes__item:visible").count()
-    # logging.debug("Vids found: %s", num_vids)
 
     logging.info("Trying to load more videos")
     page.locator("text=Načíst další videa").click()
-    new_num_videos = page.locator("[class=search-episodes__item]").count()
+    new_num_videos = page.locator(sel_search_episodes_item).count()
     logging.debug("Videos found: %s", new_num_videos)
     assert new_num_videos > num_videos, "No additional videos were loaded"
+
+    logging.info("Verifying all videos are visible")
+    num_visible_videos = page.locator("li.search-episodes__item:visible").count()
+    logging.debug("Visible videos: %s", num_visible_videos)
+    assert num_visible_videos == new_num_videos, "Not all videos are visible"
 
 
 # test video filtering
