@@ -142,7 +142,6 @@ def test_search_for_nonexistent_term(page):
         expect(page.locator(f"text={result['name']}")).not_to_be_visible()
 
 
-# test empty search page
 def test_empty_search_page(page):
     """Test that default search page ('/hledani') shows no results."""
     default_search_page_url = base_url + "/hledani"
@@ -180,12 +179,26 @@ def test_search_for_videos_from_random_page(page):
     logging.info("Waiting for redirection")
     expect(page).to_have_url(f"{base_url}/hledani?dotaz={term}")
 
-    # FIXME: verify non-empty results
+    logging.info("Verifying search for videos")
+    for result in search_results:
+        if result["name"] == "VideaFiltry":
+            video_section = result
+            break
+    expect(page.locator(f"text={video_section['name']}")).to_be_visible()
+    expect(page.locator(video_section["content_box"])).to_be_visible()
+    expect(page.locator(video_section["content_box"])).not_to_be_empty()
+
+    num_videos: int = page.locator("[class=search-episodes__item]").count()
+    logging.debug("Videos found: %s", num_videos)
+    # FIXME: verify videos are visible
+    # num_vids = page.locator("li.search-episodes__item:visible").count()
+    # logging.debug("Vids found: %s", num_vids)
 
     logging.info("Trying to load more videos")
     page.locator("text=Načíst další videa").click()
-
-    # FIXME: verify more results is shown
+    new_num_videos = page.locator("[class=search-episodes__item]").count()
+    logging.debug("Videos found: %s", new_num_videos)
+    assert new_num_videos > num_videos, "No additional videos were loaded"
 
 
 # test video filtering
