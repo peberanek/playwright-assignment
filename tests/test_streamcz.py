@@ -69,8 +69,9 @@ def mod_context(context):
 # test cases
 #
 
-# FIXME: add this module marker
-# pytestmark = pytest.mark.flaky(reruns=1)
+# Occasionally, stream.cz main web page cannot be reached. But the next
+# trial is usually ok.
+pytestmark = pytest.mark.flaky(reruns=1)
 
 base_url = "https://www.stream.cz"
 
