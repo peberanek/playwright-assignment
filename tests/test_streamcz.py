@@ -83,6 +83,9 @@ sel_vcard = "[class=vcard]"
 sel_squircle_carousel_list = "[class=squircle-carousel__list]"
 sel_search_episodes_list = "[class=search-episodes__list]"
 
+# selectors: mobile-specific
+sel_mob_show_search_button = "[data-dot=search-mobile-show]"
+
 test_data = [
     {
         "term": "Kazma",
@@ -104,13 +107,15 @@ test_data = [
 
 
 @pytest.mark.parametrize("test_data", test_data)
-def test_basic_search(page, test_data):
+def test_basic_search(page, test_data, browser_context_args):
     """Test basic search on the Stream.cz main page."""
 
     logging.info("Opening '%s'", base_url)
     page.goto(base_url, wait_until="networkidle")
 
     logging.info("Searching for '%s'", test_data["term"])
+    if browser_context_args.get("is_mobile", False):
+        page.locator(sel_mob_show_search_button).click()
     page.locator(sel_search_field).click()
     page.locator(sel_search_field).fill(test_data["term"])
     page.locator(sel_search_button).click()
@@ -128,7 +133,7 @@ def test_basic_search(page, test_data):
         expect(page.locator(section["content"])).not_to_be_empty()
 
 
-def test_search_for_nonexistent_term(page):
+def test_search_for_nonexistent_term(page, browser_context_args):
     """Test searching for a non-existent term returns no results.
 
     Verify user is presented with an info that no results were found.
@@ -139,6 +144,8 @@ def test_search_for_nonexistent_term(page):
     page.goto(base_url, wait_until="networkidle")
 
     logging.info("Searching for '%s'", term)
+    if browser_context_args.get("is_mobile", False):
+        page.locator(sel_mob_show_search_button).click()
     page.locator(sel_search_field).click()
     page.locator(sel_search_field).fill(term)
     page.locator(sel_search_button).click()
@@ -166,7 +173,7 @@ def test_empty_search_page(page):
 
 
 @pytest.mark.parametrize("test_data", test_data)
-def test_search_for_videos_from_random_page(page, test_data):
+def test_search_for_videos_from_random_page(page, test_data, browser_context_args):
     """Test searching videos any page.
 
     Verify the button "Načíst další videa" loads more videos.
@@ -177,6 +184,8 @@ def test_search_for_videos_from_random_page(page, test_data):
     page.goto(url, wait_until="networkidle")
 
     logging.info("Searching for '%s'", test_data["term"])
+    if browser_context_args.get("is_mobile", False):
+        page.locator(sel_mob_show_search_button).click()
     page.locator(sel_search_field).click()
     page.locator(sel_search_field).fill(test_data["term"])
     page.locator(sel_search_button).click()
