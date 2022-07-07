@@ -1,19 +1,29 @@
-"""Test cases for basic testing of stream.cz
+"""Sample tests of stream.cz search functionality
 
-Tasks:
-    * Cover at least the test cases listed in README.md
-    * What other tests would you implement?
-        * Defferend terms then "Kazma"
-            * Searching a Czech term (e.g. 'Štastné pondělí') without diacritics.
+Tests cover test cases listed in README.md. Running `make tests` in the root dir
+runs tests simulating desktop (Chromium) and mobile (Android: Pixel 2). I belive
+that should cover most of the users as Chromium/Chrome/Edge and Android should have
+the biggest market share. See e.g.
+https://gs.statcounter.com/browser-market-share
+https://gs.statcounter.com/os-market-share/mobile/worldwide
+https://playwright.dev/docs/browsers#when-to-use-google-chrome--microsoft-edge-and-when-not-to
+
+More browsers and devices (e.g. WebKit or iPhones) can be easily simulated by the
+`--device` command-line option. For the list of available devices see:
+https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/deviceDescriptorsSource.json
+
+Additional tests (implemented):
+    * Tests search also for 'Seznam' (not only for 'Kazma') to verify other search
+      terms.
+
+Additional tests (not implemented):
+    E.g.:
+        * Searching a Czech term (e.g. 'Štastné pondělí') without diacritics.
+        * Verifying that main topics ("Zábava", "Zpravodajství", "Magazín") return
+          correct results.
 
 Notes:
-    * How to achieve the widest coverage with minimal effort?
-        * desktop (Chrome, Edge)
-            Playwright docs claim chromium is good enough for most
-            testing of Chrome and Edge:
-            https://playwright.dev/docs/browsers#when-to-use-google-chrome--microsoft-edge-and-when-not-to
-        * mobile (Android)
-    * For some reason, in headless mode Page.goto() requires
+    * For some reason, in headless mode `Page.goto()` requires
       `wait_until='networkidle'`, otherwise the user is *not* redirected to
       `https://www.stream.cz/hledani?dotaz=<searched-term>`, the URL only
       changes to `https://www.stream.cz/?dotaz=<searched-term>` and no search
@@ -29,7 +39,7 @@ from playwright.sync_api import Page, expect
 
 
 @pytest.fixture(autouse=True)
-def mod_context(context):
+def modified_context(context):
     """Provide modified context; e.g. set cookies."""
     common_cookie_vals = {
         "domain": ".stream.cz",
@@ -68,8 +78,8 @@ def mod_context(context):
 # test cases
 #
 
-# Occasionally, stream.cz main web page cannot be reached. But the next
-# trial is usually ok.
+# Occasionally, stream.cz main page is not fully loaded before timeout.
+# See note about `wait_until='networkidle'`. But the next trial is usually ok.
 pytestmark = pytest.mark.flaky(reruns=1)
 
 base_url = "https://www.stream.cz"
@@ -132,7 +142,7 @@ def search_term(
 
 @pytest.mark.parametrize("test_data", test_data)
 def test_basic_search(page, test_data, browser_context_args):
-    """Test basic search on the Stream.cz main page."""
+    """Test basic search on the stream.cz main page."""
 
     search_term(page, base_url, test_data["term"], browser_context_args)
 
@@ -209,7 +219,10 @@ def test_search_for_videos_from_random_page(page, test_data, browser_context_arg
 
 @pytest.mark.parametrize("test_data", test_data)
 def test_basic_video_filtering(page, test_data, browser_context_args):
-    """Test basic video filtering."""
+    """Test basic video filtering.
+
+    Verify video filter 'Střední (do 30 min)' returns correct results.
+    """
 
     search_term(page, base_url, test_data["term"], browser_context_args)
 
@@ -219,7 +232,7 @@ def test_basic_video_filtering(page, test_data, browser_context_args):
     page.locator(f"text={filter_name}").click()
 
     sel_episode_duration = "[class=episode-duration]"
-    # XXX: If `locator(...).first.text_content()` is not called, then
+    # Beware: If `locator(...).first.text_content()` is not called, then
     # `locator(...).all_text_contents()` find no elements. Quite strange.
     # Possible a bug in Playwright?
     page.locator(sel_episode_duration).first.text_content()
