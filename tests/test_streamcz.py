@@ -207,9 +207,28 @@ def test_search_for_videos_from_random_page(page, test_data, browser_context_arg
     assert num_visible_videos == new_num_videos, "Not all videos are visible"
 
 
-# test video filtering
+@pytest.mark.parametrize("test_data", test_data)
+def test_basic_video_filtering(page, test_data, browser_context_args):
+    """Test basic video filtering."""
 
+    search_term(page, base_url, test_data["term"], browser_context_args)
 
-#
-# additional tests?
-#
+    filter_name = "Střední (do 30 min)"
+    logging.info("Verifying filter '%s'", filter_name)
+    page.locator("text=Filtry").click()
+    page.locator(f"text={filter_name}").click()
+
+    sel_episode_duration = "[class=episode-duration]"
+    # XXX: If `locator(...).first.text_content()` is not called, then
+    # `locator(...).all_text_contents()` find no elements. Quite strange.
+    # Possible a bug in Playwright?
+    page.locator(sel_episode_duration).first.text_content()
+    durations = page.locator(sel_episode_duration).all_text_contents()
+    max_duration = "30:00"
+    logging.debug(
+        "Found durations: %s; expected max. duration: %s", durations, max_duration
+    )
+    for duration in durations:
+        assert (
+            duration < max_duration
+        ), f"Unexpected video lenght: {duration}; should be < {max_duration}"
